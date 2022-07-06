@@ -1,80 +1,40 @@
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
+#pragma once
 
 #include <string>
-#include <fstream>
-#include <sstream>
+#include <unordered_map>
 
-struct Shader
+#include <GLM/glm.hpp>
+
+struct ShaderProgramSource
 {
-	std::string vertexSource;
-	std::string fragmentSource;
+    std::string VertexSource;
+    std::string FragmentSource;
+};
 
-	unsigned int vertexId;
-	unsigned int fragmentId;
+class Shader
+{
+private:
+    unsigned int m_RendererID;
+    std::string m_FilePath;
+    std::unordered_map<std::string, int> m_UniformLocationCache;
 
-	std::string errorMsg;
+public:
+    Shader(const std::string& filepath);
+    ~Shader();
 
-	static struct Shader FromFile(const std::string& filepath)
-	{
-		enum class ShaderType
-		{
-			None = -1,
-			Vertex = 0,
-			Fragment = 1
-		};
+    void Bind() const;
+    void Unbind() const;
 
-		std::ifstream stream(filepath);
-		std::string line;
-		std::stringstream ss[2];
-		ShaderType type = ShaderType::None;
+    // Set uniforms
+    void SetUniform1i(const std::string& name, int value);
+    void SetUniform1f(const std::string& name, float value);
+    void SetUniform4f(const std::string& name, float f0, float f1, float f2, float f3);
+    void SetUniformMat4f(const std::string& name, const glm::mat4& matrix);
 
+private:
+    int GetUniformLocation(const std::string& name);
+    struct ShaderProgramSource ParseShader(const std::string& filepath);
+    unsigned int CompileShader(unsigned int type, const std::string& source);
+    unsigned int CreateShader(const std::string& vertexShader, const std::string& fragmentShader);
 
-		while (getline(stream, line))
-		{
-			if (line.find("#shader") != std::string::npos)
-			{
-				if (line.find("vertex") != std::string::npos)
-					type = ShaderType::Vertex;
-				else if (line.find("fragment") != std::string::npos)
-					type = ShaderType::Fragment;
-			}
-			else
-			{
-				ss[(int)type] << line << '\n';
-			}
-		}
-
-		Shader shader = { ss[0].str(), ss[1].str() };
-		shader.Compile();
-		return shader;
-	}
-
-	bool Compile()
-	{
-		return CompileSource(GL_VERTEX_SHADER) && CompileSource(GL_FRAGMENT_SHADER);
-	}
-
-	bool CompileSource(unsigned int type)
-	{
-		vertexId = glCreateShader(type);
-		const char* src = (type == GL_VERTEX_SHADER ? vertexSource : fragmentSource).c_str();
-		glShaderSource(vertexId, 1, &src, nullptr);
-		glCompileShader(vertexId);
-
-		int result;
-		glGetShaderiv(vertexId, GL_COMPILE_STATUS, &result);
-		if (result == GL_FALSE)
-		{
-			int length;
-			glGetShaderiv(vertexId, GL_INFO_LOG_LENGTH, &length);
-			char* message = (char*)alloca(length * sizeof(char));
-			glGetShaderInfoLog(vertexId, length, &length, message);
-			errorMsg = "Failed to compile " + (type == GL_VERTEX_SHADER ? "vertex" : "fragment") + "shader" + std::endl;
-			glDeleteShader(vertexId);
-			return false;
-		}
-
-		return true;
-	}
 };

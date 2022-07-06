@@ -1,10 +1,20 @@
+#pragma once
+
 #include <glad/glad.h>
 
 #include <iostream>
+#include <stdint.h>
+#include <assert.h>
 
-#define GLCall(x) GLClearError;x;ASSET(GLCheckError())
+#define ASSERT(x) if (!(x)) assert(false)
+#define INT2VOIDP(i) (void*)(uintptr_t)(i)
 
-void GLCheckError()
+void inline GLClearError()
+{
+    while (glGetError() != GL_NO_ERROR);
+}
+
+bool inline GLCheckError()
 {
     while (GLenum error = glGetError())
     {
@@ -41,3 +51,10 @@ void GLCheckError()
     }
     return true;
 }
+
+
+#ifdef DEBUG
+    #define GLCall(x) GLClearError();x;ASSERT(GLCheckError())
+#else
+    #define GLCall(x) x
+#endif
